@@ -129,7 +129,7 @@ class ElMehrathBot(commands.Bot):
 
     def ensure_add_users(self):
         for member in self.my_guild.members:
-            if member.id is not self.user.id:
+            if member.id != self.user.id:
                 self.db.add_student(member.id, member.joined_at, can_exist=True)
 
     async def give_contributor(self, member_id, notify_success=False):
