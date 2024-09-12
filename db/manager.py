@@ -5,6 +5,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.future import engine
 from sqlalchemy.orm import sessionmaker, Session
 
+from config import inactivity_range
 from db.base import Base
 from db.document import Document
 from db.student import Student
@@ -47,10 +48,18 @@ class DbManager:
 
     async def find_inactive_users(self, callback):
         current_date = datetime.utcnow()
-        min_contribution_date = current_date - timedelta(days=7)
+        min_contribution_date = current_date - inactivity_range
         print(f"min_contribution_date is {min_contribution_date}")
         with self.Session.begin() as session:
             students = session.query(Student).filter(Student.last_contribution_date < min_contribution_date)
+            await callback(students)
+
+    async def find_active_users(self, callback):
+        current_date = datetime.utcnow()
+        min_contribution_date = current_date - inactivity_range
+        print(f"min_contribution_date is {min_contribution_date}")
+        with self.Session.begin() as session:
+            students = session.query(Student).filter(Student.last_contribution_date > min_contribution_date)
             await callback(students)
 
     def add_student(self, student_id, joined_at, can_exist=False):

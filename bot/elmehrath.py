@@ -12,7 +12,7 @@ from bot.submit_document import SubmitDocumentTask
 from db.manager import DbManager
 from file.attachment import AttachmentManager
 from model.subject import Subject, lesson_catalog
-
+from util import dt_utils
 
 SUBMIT_CHANNELS = ["submit", "test"]
 DAILY_CHECKUP_CHANNEL = "daily-checkup"
@@ -131,6 +131,12 @@ class ElMehrathBot(commands.Bot):
         for member in self.my_guild.members:
             if member.id != self.user.id:
                 self.db.add_student(member.id, member.joined_at, can_exist=True)
+
+        async def active_callback(students: Query):
+            for student in students:
+                await self.give_contributor(student.id)
+
+        await self.db.find_active_users(active_callback)
 
     async def give_contributor(self, member_id, notify_success=False):
         contributor_role = discord.utils.get(self.my_guild.roles, name="contributor")
