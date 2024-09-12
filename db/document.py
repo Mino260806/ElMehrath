@@ -8,7 +8,7 @@ class Document(Base):
     __tablename__ = 'documents'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    message_id = Column(String, nullable=False)
+    message_id = Column(String, nullable=True)
     url = Column(String, nullable=False)
     filename = Column(String, nullable=False)
     user = Column(Integer, nullable=False)
