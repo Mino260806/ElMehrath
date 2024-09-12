@@ -28,4 +28,8 @@ class DbManager:
 
     def delete(self, document_id):
         with self.Session.begin() as session:
-            session.query(Document).filter_by(id=document_id).first()
+            document = session.query(Document).filter_by(id=document_id).first()
+            if document is not None:
+                session.delete(document)
+                return document
+            return None

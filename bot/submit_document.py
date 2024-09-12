@@ -60,20 +60,21 @@ class SubmitDocumentTask:
 
         await self.finish()
 
-    async def send_document(self, attachment, document_id):
+    async def send_document(self, attachment, document_id, retry=True):
         subject = attachment.subject
         lesson = attachment.lesson
-        if lesson not in self.parent.channel_catalog[subject]:
-            threadwithmessage = await self.parent.forum_catalog[subject].create_thread(
-                name=lesson.description, content=lesson.description)
-            post = threadwithmessage.thread
-            self.parent.channel_catalog[subject][lesson] = post
-        else:
-            post = self.parent.channel_catalog[subject][lesson]
+        post = await self.parent.get_submission_channel(subject, lesson)
 
         praise = random.choice(dialog.praise_submit).format(attachment.user)
         text = f"{praise}\ndocument id: {document_id}"
-        message: Message = await post.send(text, file=File(attachment.path))
+        try:
+            message: Message = await post.send(text, file=File(attachment.path))
+        except discord.errors.NotFound:
+            if retry:
+                self.parent.remove_cached_channel(subject, lesson)
+                return await self.send_document(attachment, document_id, retry=False)
+            else:
+                return None
         attachment.message_id = message.id
         return message
 
