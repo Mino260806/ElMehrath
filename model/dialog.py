@@ -1,0 +1,22 @@
+praise_submit = [
+    "<@{}> You’re a total rockstar for sharing this document with everyone!",
+    "Wow, thanks <@{}> for being so generous with your resources!",
+    "Seriously <@{}>, you're awesome for helping out your friends like this.",
+    "<@{}> This document is a game-changer, thanks for sharing!",
+    "<@{}> You really came through for us, and we appreciate it!",
+    "<@{}> You’re the best for making sure everyone has access to this info!",
+    "Big shoutout to <@{}> for being so generous with this document!",
+    "<@{}> Thanks a ton for sharing, you're a lifesaver!",
+    "<@{}> You’re a gem for passing this along to us!",
+    "<@{}> You’re a hero for helping out the whole group with this!",
+    "<@{}> Your generosity is seriously impressive, thanks for sharing!",
+    "Kudos to <@{}> for being so thoughtful and generous!",
+    "<@{}> You’ve made a big difference with this document, thank you!",
+    "<@{}> You’re amazing for thinking of everyone and sharing this!",
+    "This was incredibly generous of <@{}>, thanks a million!",
+    "<@{}> You’re such a star for providing this document for everyone!",
+    "<@{}> Thanks for going above and beyond for the group!",
+    "<@{}> Your kindness in sharing this is really appreciated!",
+    "<@{}> You’re a true friend for making this available to all of us!",
+    "<@{}> Thanks for being so awesome and sharing this document with us!"
+]
