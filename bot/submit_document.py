@@ -7,6 +7,7 @@ from bot.view import AttributeSelectorView, SubjectSelectorView
 from file.attachment import AttachmentManager
 from model import dialog
 from model.subject import lesson_catalog
+from util import dt_utils
 
 
 class SubmitDocumentTask:
@@ -29,6 +30,9 @@ class SubmitDocumentTask:
         self.pending_message = await channel.send(f"<@{attachment.user}> please select document subject", view=subject_selector)
 
     async def on_subject_selected(self, attachment, subject, interaction: discord.Interaction):
+        if attachment.user != interaction.user.id:
+            await interaction.response.send_message(f"You did not submit the document.", ephemeral=True)
+            return
         attachment.subject = subject
         print(f"Selected subject {attachment.subject.description}")
         lesson_selector = AttributeSelectorView(lesson_catalog[subject], attachment, self.on_lesson_selected, self.finish)
@@ -37,17 +41,21 @@ class SubmitDocumentTask:
         await interaction.message.delete()
 
     async def on_lesson_selected(self, attachment, lesson, interaction: discord.Interaction):
+        if attachment.user != interaction.user.id:
+            await interaction.response.send_message(f"You did not submit the document", ephemeral=True)
+            return
+
         self.pending_message = None
 
         attachment.lesson = lesson
         print(f"Selected lesson {attachment.lesson.description}")
         await interaction.message.delete()
-        await self.on_document_submit(attachment, interaction.message.channel)
+        await self.on_document_submit(attachment)
         await interaction.message.channel.send(f'Thanks for submitting a '
                                                f'{attachment.subject.description} document on '
                                                f'"{attachment.lesson.description}"')
 
-    async def on_document_submit(self, attachment, source_channel):
+    async def on_document_submit(self, attachment):
         print(f"Saving document {attachment.url} to database")
         document = self.craft_document(attachment)
         document_id = self.parent.db.add_document(document)
@@ -57,8 +65,12 @@ class SubmitDocumentTask:
 
         print(f"Updating message id to {attachment.message_id}")
         self.parent.db.update_document_message_id(document_id, attachment.message_id)
+        print(f"Setting contribution date for {document.user} to {document.sent_date}")
+        self.parent.db.update_student_contribution(document.user, document.sent_date)
 
-        await self.finish()
+        await self.parent.give_contributor(attachment.user, notify_success=True)
+
+        await self.finish(attachment=attachment)
 
     async def send_document(self, attachment, document_id, retry=True):
         subject = attachment.subject
@@ -90,10 +102,14 @@ class SubmitDocumentTask:
             author=None,
             highschool=None,
             description=attachment.description,
-            sent_date=attachment.sent_date,
+            sent_date=dt_utils.to_utc(attachment.sent_date),
         )
 
-    async def finish(self):
+    async def finish(self, attachment=None, interaction=None):
+        if interaction is not None and attachment is not None and attachment.user != interaction.user.id:
+            await interaction.response.send_message(f"You did not submit the document", ephemeral=True)
+            return
+
         if self.pending_message is not None:
             await self.pending_message.channel.send("Submit cancelled")
             await self.pending_message.delete()

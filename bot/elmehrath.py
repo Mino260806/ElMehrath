@@ -1,7 +1,11 @@
+import datetime
+import time
+
 import discord
-from discord import Message
-from discord.ext import commands
+from discord import Message, Guild, Member
+from discord.ext import commands, tasks
 from discord.ext.commands import Command
+from sqlalchemy.orm import Query
 
 from ai.aibrain import AiBrain
 from bot.submit_document import SubmitDocumentTask
@@ -11,6 +15,7 @@ from model.subject import Subject, lesson_catalog
 
 
 SUBMIT_CHANNELS = ["submit", "test"]
+DAILY_CHECKUP_CHANNEL = "daily-checkup"
 
 
 class ElMehrathBot(commands.Bot):
@@ -18,6 +23,7 @@ class ElMehrathBot(commands.Bot):
 
         intents = discord.Intents.default()
         intents.message_content = True
+        intents.members = True
 
         super().__init__("!", intents=intents)
 
@@ -26,7 +32,9 @@ class ElMehrathBot(commands.Bot):
         self.forum_catalog = {}
         self.channel_catalog = {}
         self.attachment_manager = AttachmentManager()
-        self.my_guild = None
+        self.my_guild: Guild | None = None
+
+        self.setup_commands()
 
     async def on_ready(self):
         print(f"We have logged in as {self.user}")
@@ -41,6 +49,12 @@ class ElMehrathBot(commands.Bot):
             for thread in channel.threads:
                 lesson = lesson_catalog[subject].by_description(thread.name)
                 self.channel_catalog[subject][lesson] = thread
+
+        self.daily_checkup.start()
+
+        self.ensure_add_users()
+
+        print("I am ready")
 
     async def on_message(self, message: Message):
         if message.author == self.user:
@@ -92,3 +106,64 @@ class ElMehrathBot(commands.Bot):
             await source_channel.send(f'Deleted document {document_id}!')
         else:
             await source_channel.send(f'No such document!')
+
+    @tasks.loop(time=datetime.time(hour=18))
+    async def daily_checkup(self):
+        print("Performing daily checkup")
+        channel = self.get_checkup_channel()
+
+        async def inactive_callback(students: Query):
+            if students.count() == 0:
+                await channel.send("Daily checkup result: All users are active!")
+                return
+            text = []
+            for student in students:
+                print(f"{student.id}.last_contribution_date is {student.last_contribution_date}")
+                await self.remove_contributor(student.id)
+                text.append(f"<@{student.id}>")
+            students_raw = ", ".join(text)
+            await channel.send(f"{students_raw}, you no longer have access to our valuable documents, "
+                               f"submit a resource in #submit to renew your access")
+
+        await self.db.find_inactive_users(inactive_callback)
+
+    def ensure_add_users(self):
+        for member in self.my_guild.members:
+            if member.id is not self.user.id:
+                self.db.add_student(member.id, member.joined_at, can_exist=True)
+
+    async def give_contributor(self, member_id, notify_success=False):
+        contributor_role = discord.utils.get(self.my_guild.roles, name="contributor")
+        member: Member | None = await self.my_guild.fetch_member(member_id)
+        if member is not None:
+            if contributor_role not in member.roles:
+                print(f"Giving contributor role to {member.name}")
+                await member.add_roles(contributor_role)
+                if notify_success:
+                    channel = self.get_checkup_channel()
+                    await channel.send(f"{member.mention}, you regained access to our valuable documents. "
+                                       f"Thanks for contributing!")
+            else:
+                print(f"Member {member.name} is already contributor")
+
+    async def remove_contributor(self, member_id):
+        contributor_role = discord.utils.get(self.my_guild.roles, name="contributor")
+        member: Member | None = await self.my_guild.fetch_member(member_id)
+        if member is not None:
+            if contributor_role in member.roles:
+                print(f"Member {member.mention} is no longer contributor")
+                await member.remove_roles(contributor_role)
+
+    def setup_commands(self):
+        @self.event
+        async def on_member_join(member: Member):
+            channel = discord.utils.get(member.guild.text_channels, name='welcome')
+            if channel:
+                await channel.send(f"Welcome to {self.my_guild.name}, {member.mention}!"
+                                   f"To ensure you retain access to our valuable documents, "
+                                   f"please make sure to share your own documents on a **weekly** basis!")
+            self.db.add_student(member.id, member.joined_at)
+            await self.give_contributor(member.id)
+
+    def get_checkup_channel(self):
+        return discord.utils.get(self.my_guild.channels, name=DAILY_CHECKUP_CHANNEL)

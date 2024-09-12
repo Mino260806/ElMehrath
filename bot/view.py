@@ -29,7 +29,7 @@ class AttributeSelectorView(discord.ui.View):
 
     def create_cancel_callback(self):
         async def callback(interaction: discord.Interaction):
-            await self.on_cancel()
+            await self.on_cancel(attachment=self.attachment, interaction=interaction)
         return callback
 
 

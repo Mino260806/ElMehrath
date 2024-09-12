@@ -1,5 +1,5 @@
-from sqlalchemy import create_engine, Column, Integer, String, Date, ForeignKey
-from datetime import date
+from sqlalchemy import create_engine, Column, Integer, String, Date, ForeignKey, DateTime
+from datetime import date, datetime
 
 from db.base import Base
 
@@ -17,4 +17,4 @@ class Document(Base):
     author = Column(String, nullable=True)
     highschool = Column(String, nullable=True)
     description = Column(String, nullable=True)
-    sent_date = Column(Date, default=date.today)
+    sent_date = Column(DateTime, default=datetime.now)
