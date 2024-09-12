@@ -52,7 +52,7 @@ class ElMehrathBot(commands.Bot):
 
         self.daily_checkup.start()
 
-        self.ensure_add_users()
+        await self.ensure_add_users()
 
         print("I am ready")
 
@@ -127,7 +127,7 @@ class ElMehrathBot(commands.Bot):
 
         await self.db.find_inactive_users(inactive_callback)
 
-    def ensure_add_users(self):
+    async def ensure_add_users(self):
         for member in self.my_guild.members:
             if member.id != self.user.id:
                 self.db.add_student(member.id, member.joined_at, can_exist=True)
